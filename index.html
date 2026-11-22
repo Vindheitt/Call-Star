@@ -1,106 +1,14 @@
 <!doctype html>
 <html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#102f91">
-  <title>CallStar — помощник старосты</title>
-  <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-  <section id="loginView" class="login-screen">
-    <div class="login-card">
-      <div class="brand brand-login"><span class="brand-star">★</span>CallStar</div>
-      <h1>Вход в CallStar</h1>
-      <p class="muted">Войдите, чтобы управлять группой</p>
-      <form id="loginForm">
-        <label for="login">Логин</label>
-        <input id="login" autocomplete="username" placeholder="Например, starosta" required>
-        <label for="password">Пароль</label>
-        <input id="password" type="password" autocomplete="current-password" placeholder="Введите пароль" required>
-        <button class="primary full" type="submit">Войти</button>
-      </form>
-      <p class="login-hint">Демонстрационный режим: подойдёт любой логин и пароль.</p>
-    </div>
-  </section>
-
-  <div id="appView" class="app hidden">
-    <header class="topbar">
-      <a class="brand" href="#" aria-label="CallStar"><span class="brand-star">★</span>CallStar</a>
-      <nav class="main-nav">
-        <button class="nav-link active" data-page="calendar">Календарь</button>
-        <button class="nav-link" data-page="attendance">Посещаемость</button>
-        <button class="nav-link" data-page="students">Студенты</button>
-        <button class="nav-link" data-page="events">События</button>
-      </nav>
-      <div class="user-area"><span id="groupLabel">Группа ПИ-609-52 · староста</span><button id="logoutBtn" class="ghost small">Выйти</button></div>
-    </header>
-
-    <main class="container">
-      <section id="calendarPage" class="page">
-        <div class="page-heading">
-          <div><p class="eyebrow">РАБОЧЕЕ ПРОСТРАНСТВО</p><h1>Календарь</h1><p class="muted">Посещаемость и события вашей группы</p></div>
-          <div class="calendar-controls"><button id="prevMonth" class="icon-btn" aria-label="Предыдущий месяц">‹</button><button id="todayBtn" class="secondary">Сегодня</button><button id="nextMonth" class="icon-btn" aria-label="Следующий месяц">›</button></div>
-        </div>
-        <div class="calendar-card">
-          <div class="calendar-title"><h2 id="monthTitle"></h2><span class="muted">Выберите день, чтобы открыть посещаемость</span></div>
-          <div class="calendar-grid weekdays">
-            <div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div><div>Пт</div><div>Сб</div><div>Вс</div>
-          </div>
-          <div id="calendarGrid" class="calendar-grid"></div>
-          <div class="legend"><span><i class="dot dot-done"></i>Отмечено</span><span><i class="dot dot-empty"></i>Не отмечено</span><span><i class="dot dot-event"></i>Есть событие</span></div>
-        </div>
-        <div class="section-heading"><div><h2>Ближайшие события</h2><p class="muted">Важная информация для группы</p></div><button class="primary" data-go="events">Все события</button></div>
-        <div id="upcomingEvents" class="event-list"></div>
-      </section>
-
-      <section id="attendancePage" class="page hidden">
-        <div class="page-heading">
-          <div><p class="eyebrow">ЖУРНАЛ ГРУППЫ</p><h1>Посещаемость</h1><p class="muted">Отметьте статус каждого студента на выбранной паре</p></div>
-          <div class="date-control"><label for="attendanceDate">Дата</label><input id="attendanceDate" type="date"></div>
-        </div>
-        <div class="toolbar">
-          <div class="lesson-tabs"><button class="lesson-tab active" data-lesson="1">1 пара · 8:30</button><button class="lesson-tab" data-lesson="2">2 пара · 10:00</button><button class="lesson-tab" data-lesson="3">3 пара · 11:30</button></div>
-          <div class="toolbar-actions"><button id="allPresent" class="secondary">Все присутствуют</button><button id="saveAttendance" class="primary">Сохранить</button></div>
-        </div>
-        <div id="attendanceSummary" class="summary-row"></div>
-        <div class="table-card">
-          <div class="table-head"><span>№</span><span>Студент</span><span>Статус</span></div>
-          <div id="attendanceRows"></div>
-        </div>
-        <p id="saveMessage" class="success-message" aria-live="polite"></p>
-      </section>
-
-      <section id="studentsPage" class="page hidden">
-        <div class="page-heading">
-          <div><p class="eyebrow">СОСТАВ ГРУППЫ</p><h1>Студенты</h1><p class="muted">Добавляйте и редактируйте список группы</p></div>
-          <button id="addStudentToggle" class="primary">＋ Добавить студента</button>
-        </div>
-        <form id="addStudentForm" class="inline-form hidden">
-          <div><label for="studentName">Фамилия и инициалы</label><input id="studentName" placeholder="Например, Иванов И. И." required></div>
-          <button class="primary" type="submit">Добавить</button><button id="cancelStudent" class="secondary" type="button">Отмена</button>
-        </form>
-        <div class="table-card">
-          <div class="table-head student-head"><span>№</span><span>Студент</span><span>Действие</span></div>
-          <div id="studentRows"></div>
-        </div>
-      </section>
-
-      <section id="eventsPage" class="page hidden">
-        <div class="page-heading">
-          <div><p class="eyebrow">ОБЪЯВЛЕНИЯ ГРУППЫ</p><h1>События и заметки</h1><p class="muted">Переносы, отмены занятий, дедлайны и объявления</p></div>
-          <button id="addEventToggle" class="primary">＋ Создать событие</button>
-        </div>
-        <form id="addEventForm" class="event-form hidden">
-          <div class="form-grid"><div><label for="eventTitle">Название</label><input id="eventTitle" placeholder="Например, Перенос лекции" required></div><div><label for="eventDate">Дата</label><input id="eventDate" type="date" required></div></div>
-          <div><label for="eventDescription">Описание</label><textarea id="eventDescription" rows="3" placeholder="Дополнительная информация для группы"></textarea></div>
-          <div class="form-actions"><button class="primary" type="submit">Опубликовать</button><button id="cancelEvent" class="secondary" type="button">Отмена</button></div>
-        </form>
-        <div id="eventRows" class="event-list"></div>
-      </section>
-    </main>
-    <footer>CallStar <span>·</span> Умный помощник старосты</footer>
-  </div>
-  <script src="app.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#102f91" />
+    <meta name="description" content="CallStar — умный помощник старосты" />
+    <title>CallStar — помощник старосты</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>
