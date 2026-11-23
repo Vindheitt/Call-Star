@@ -1,0 +1,25 @@
+# Зависимости Node.js
+node_modules/
+
+# Сборка frontend
+dist/
+
+# Переменные окружения и секреты
+.env
+.env.*
+!.env.example
+
+# Локальные базы данных SQLite
+*.db
+*.db-wal
+*.db-shm
+
+# Логи
+*.log
+npm-debug.log*
+
+# Системные файлы и файлы редакторов
+.DS_Store
+.idea/
+.vscode/
+server/data/

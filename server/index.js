@@ -1,55 +1,58 @@
+
 const express = require('express');
 const cors = require('cors');
 
 // Подключаем базу данных
 const db = require('./db/database');
 
+// Подключаем маршруты
+const authRouter = require('./routes/auth');
 const studentsRouter = require('./routes/students');
 const attendanceRouter = require('./routes/attendance');
+
+// Подключаем middleware авторизации
+const { authenticateToken } = require('./middleware/auth');
 
 const app = express();
 const PORT = 3001;
 
-// Подключаем middleware
+// Middleware
 app.use(cors());
 app.use(express.json());
-// Маршруты студентов
-app.use('/api/students', studentsRouter);
 
-// Маршруты посещаемости
-app.use('/api/attendance', attendanceRouter);
+// Открытые маршруты
+app.use('/api/auth', authRouter);
 
-// Проверочный маршрут
 app.get('/api/health', (req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    message: 'CallStar API is running'
-  });
+    res.json({
+        status: 'ok',
+        message: 'CallStar API is running'
+    });
 });
 
-// Обработка неизвестных маршрутов
+// Защищённые маршруты
+app.use('/api/students', authenticateToken, studentsRouter);
+app.use('/api/attendance', authenticateToken, attendanceRouter);
+
+// Обработка несуществующих маршрутов
 app.use((req, res) => {
-  res.status(404).json({
-    status: 'error',
-    message: 'Route not found'
-  });
+    res.status(404).json({
+        status: 'error',
+        message: 'Route not found'
+    });
 });
 
-// Общая обработка ошибок
+// Обработка ошибок сервера
 app.use((err, req, res, next) => {
-  console.error('Server error:', err);
+    console.error('Server error:', err);
 
-  res.status(500).json({
-    status: 'error',
-    message: 'Internal server error'
-  });
+    res.status(500).json({
+        status: 'error',
+        message: 'Internal server error'
+    });
 });
 
 // Запуск сервера
 app.listen(PORT, () => {
-  console.log('================================');
-  console.log('CallStar Backend started');
-  console.log(`Server: http://localhost:${PORT}`);
-  console.log(`Health: http://localhost:${PORT}/api/health`);
-  console.log('================================');
+    console.log(`CallStar API running at http://localhost:${PORT}`);
 });

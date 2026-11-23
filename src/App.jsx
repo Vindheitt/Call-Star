@@ -1,6 +1,6 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { studentsApi } from './api';
+import { authApi, getToken, studentsApi } from './api';
 
 const STATUSES = ['Присутствует', 'Отсутствует', 'Уважительная', 'Болеет', 'Опоздал'];
 
@@ -36,7 +36,11 @@ const today = new Date();
 
 function App() {
   const [loggedIn, setLoggedIn] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
   const [login, setLogin] = useState('');
+  const [password, setPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [user, setUser] = useState(null);
   const [page, setPage] = useState('calendar');
   const [month, setMonth] = useState(
     new Date(today.getFullYear(), today.getMonth(), 1)
@@ -45,7 +49,7 @@ function App() {
   const [lesson, setLesson] = useState('1');
 
   const [students, setStudents] = useState([]);
-  const [studentsLoading, setStudentsLoading] = useState(true);
+  const [studentsLoading, setStudentsLoading] = useState(false);
   const [studentsError, setStudentsError] = useState('');
 
   const [attendance, setAttendance] = useState(() =>
@@ -79,7 +83,36 @@ function App() {
   const [saveMessage, setSaveMessage] = useState('');
 
   // Загрузка студентов из базы данных
+  // Проверка сохранённой авторизации при запуске приложения
   useEffect(() => {
+    const checkAuth = async () => {
+      if (!getToken()) {
+        setAuthLoading(false);
+        return;
+      }
+
+      try {
+        const result = await authApi.getMe();
+
+        setUser(result.user);
+        setLogin(result.user.username);
+        setLoggedIn(true);
+      } catch (error) {
+        authApi.logout();
+        setUser(null);
+        setLoggedIn(false);
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  // Загрузка студентов только после успешного входа
+  useEffect(() => {
+    if (!loggedIn) return;
+
     const loadStudents = async () => {
       try {
         setStudentsLoading(true);
@@ -95,7 +128,7 @@ function App() {
     };
 
     loadStudents();
-  }, []);
+  }, [loggedIn]);
 
   const attendanceKey = `${selectedDate}_${lesson}`;
   const currentSaved = attendance[attendanceKey] || {};
@@ -259,6 +292,49 @@ function App() {
   const sortedEvents = [...events].sort((a, b) =>
     a.date.localeCompare(b.date)
   );
+  // Вход в аккаунт
+  const handleLogin = async e => {
+    e.preventDefault();
+
+    try {
+      setAuthError('');
+
+      const result = await authApi.login(login, password);
+
+      setUser(result.user);
+      setLogin(result.user.username);
+      setPassword('');
+      setLoggedIn(true);
+    } catch (error) {
+      setAuthError(error.message);
+    }
+  };
+
+  // Выход из аккаунта
+  const handleLogout = () => {
+    authApi.logout();
+
+    setLoggedIn(false);
+    setUser(null);
+    setStudents([]);
+    setPassword('');
+    setAuthError('');
+    setStudentsError('');
+    setPage('calendar');
+  };
+  if (authLoading) {
+    return (
+      <section className="login-screen">
+        <div className="login-card">
+          <div className="brand brand-login">
+            <span className="brand-star">★</span>
+            CallStar
+          </div>
+          <p className="muted">Проверяем авторизацию...</p>
+        </div>
+      </section>
+    );
+  }
 
   if (!loggedIn) {
     return (
@@ -272,10 +348,7 @@ function App() {
           <h1>Вход в CallStar</h1>
           <p className="muted">Войдите, чтобы управлять группой</p>
 
-          <form onSubmit={e => {
-            e.preventDefault();
-            setLoggedIn(true);
-          }}>
+          <form onSubmit={handleLogin}>
             <label htmlFor="login">Логин</label>
             <input
               id="login"
@@ -286,22 +359,28 @@ function App() {
               required
             />
 
-            <label htmlFor="password">Пароль</label>
             <input
               id="password"
               type="password"
               autoComplete="current-password"
               placeholder="Введите пароль"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
               required
             />
 
             <button className="primary full" type="submit">
               Войти
             </button>
+            {authError && (
+              <p className="error-message" role="alert">
+                {authError}
+              </p>
+            )}
           </form>
 
           <p className="login-hint">
-            Демонстрационный режим: подойдёт любой логин и пароль.
+            Войдите с помощью выданных вам учётных данных.
           </p>
         </div>
       </section>
@@ -344,7 +423,7 @@ function App() {
           <span>Группа ПИ-609-52 · {login || 'староста'}</span>
           <button
             className="ghost small"
-            onClick={() => setLoggedIn(false)}
+            onClick={handleLogout}
           >
             Выйти
           </button>
