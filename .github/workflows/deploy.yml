@@ -2,7 +2,7 @@ name: Deploy CallStar to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [react-dev]
   workflow_dispatch:
 
 permissions:
