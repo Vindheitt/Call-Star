@@ -1,6 +1,5 @@
-
 import React, { useEffect, useMemo, useState } from 'react';
-import { authApi, getToken, studentsApi } from './api';
+import { authApi, getToken, studentsApi, eventsApi } from './api';
 
 const STATUSES = ['Присутствует', 'Отсутствует', 'Уважительная', 'Болеет', 'Опоздал'];
 
@@ -51,6 +50,8 @@ function App() {
   const [students, setStudents] = useState([]);
   const [studentsLoading, setStudentsLoading] = useState(false);
   const [studentsError, setStudentsError] = useState('');
+  const [eventsLoading, setEventsLoading] = useState(false);
+  const [eventsError, setEventsError] = useState('');
 
   const [attendance, setAttendance] = useState(() =>
     read('cs_attendance', {})
@@ -108,6 +109,47 @@ function App() {
 
     checkAuth();
   }, []);
+  // Загрузка событий из базы данных после входа
+  useEffect(() => {
+    if (!loggedIn) return;
+
+    const loadEvents = async () => {
+      try {
+        setEventsLoading(true);
+        setEventsError('');
+
+        // Сначала проверяем события в базе данных
+        const result = await eventsApi.getAll();
+
+        if (result.data.length > 0) {
+          setEvents(result.data);
+          save('cs_events', result.data);
+          return;
+        }
+
+        // Если база пустая, переносим старые события из localStorage
+        const legacyEvents = read('cs_events', events);
+
+        const importResult = await eventsApi.import(
+          legacyEvents.map(event => ({
+            title: event.title,
+            date: event.date,
+            description: event.description || ''
+          }))
+        );
+
+        setEvents(importResult.data);
+        save('cs_events', importResult.data);
+
+      } catch (error) {
+        setEventsError(error.message);
+      } finally {
+        setEventsLoading(false);
+      }
+    };
+
+    loadEvents();
+  }, [loggedIn]);
 
   // Загрузка студентов только после успешного входа
   useEffect(() => {
@@ -266,27 +308,61 @@ function App() {
     }
   };
 
-  const addEvent = e => {
+
+  const addEvent = async e => {
     e.preventDefault();
 
     if (!eventDraft.title.trim() || !eventDraft.date) return;
 
-    persistEvents([
-      ...events,
-      {
-        ...eventDraft,
+    try {
+      setEventsError('');
+
+      const result = await eventsApi.create({
         title: eventDraft.title.trim(),
+        date: eventDraft.date,
         description: eventDraft.description.trim()
-      }
-    ]);
+      });
 
-    setEventDraft({
-      title: '',
-      date: selectedDate,
-      description: ''
-    });
+      const updatedEvents = [...events, result.data].sort(
+        (a, b) => a.date.localeCompare(b.date)
+      );
 
-    setShowEventForm(false);
+      setEvents(updatedEvents);
+      save('cs_events', updatedEvents);
+
+      setEventDraft({
+        title: '',
+        date: selectedDate,
+        description: ''
+      });
+
+      setShowEventForm(false);
+    } catch (error) {
+      setEventsError(error.message);
+    }
+  };
+
+
+  const deleteEvent = async id => {
+    if (!window.confirm('Удалить это событие?')) return;
+
+    try {
+      setEventsError('');
+
+      await eventsApi.delete(id);
+
+      setEvents(prevEvents => {
+        const updatedEvents = prevEvents.filter(
+          event => event.id !== id
+        );
+
+        save('cs_events', updatedEvents);
+
+        return updatedEvents;
+      });
+    } catch (error) {
+      setEventsError(error.message);
+    }
   };
 
   const sortedEvents = [...events].sort((a, b) =>
@@ -442,6 +518,7 @@ function App() {
                 </p>
               </div>
 
+
               <div className="calendar-controls">
                 <button
                   className="icon-btn"
@@ -451,14 +528,7 @@ function App() {
                   ‹
                 </button>
 
-                <button
-                  className="secondary"
-                  onClick={() => setMonth(
-                    new Date(today.getFullYear(), today.getMonth(), 1)
-                  )}
-                >
-                  Сегодня
-                </button>
+                <h2 className="calendar-month-title">{monthTitle}</h2>
 
                 <button
                   className="icon-btn"
@@ -468,15 +538,26 @@ function App() {
                   ›
                 </button>
               </div>
+
             </div>
 
             <div className="calendar-card">
+
               <div className="calendar-title">
-                <h2>{monthTitle}</h2>
+                <button
+                  className="secondary"
+                  onClick={() => setMonth(
+                    new Date(today.getFullYear(), today.getMonth(), 1)
+                  )}
+                >
+                  Вернуться к текущему месяцу
+                </button>
+
                 <span className="muted">
                   Выберите день, чтобы открыть посещаемость
                 </span>
               </div>
+
 
               <div className="calendar-grid weekdays">
                 {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map(x => (
@@ -884,11 +965,13 @@ function App() {
               </form>
             )}
 
+
             <div className="event-list">
-              {sortedEvents.map((ev, i) => (
+              {sortedEvents.map(ev => (
                 <EventCard
-                  key={`${ev.date}-${i}`}
+                  key={ev.id}
                   event={ev}
+                  onDelete={deleteEvent}
                 />
               ))}
 
@@ -898,6 +981,7 @@ function App() {
                 </Empty>
               )}
             </div>
+
           </section>
         )}
       </main>
@@ -909,7 +993,8 @@ function App() {
   );
 }
 
-function EventCard({ event }) {
+
+function EventCard({ event, onDelete }) {
   const d = parseDate(event.date);
 
   return (
@@ -922,10 +1007,21 @@ function EventCard({ event }) {
       <div className="event-content">
         <h3>{event.title}</h3>
         <p>{event.description || 'Без дополнительного описания'}</p>
+
+        {onDelete && (
+          <button
+            className="delete-btn"
+            type="button"
+            onClick={() => onDelete(event.id)}
+          >
+            Удалить
+          </button>
+        )}
       </div>
     </article>
   );
 }
+
 
 function Empty({ children }) {
   return <div className="empty-state">{children}</div>;

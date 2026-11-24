@@ -9,6 +9,7 @@ const db = require('./db/database');
 const authRouter = require('./routes/auth');
 const studentsRouter = require('./routes/students');
 const attendanceRouter = require('./routes/attendance');
+const eventsRouter = require('./routes/events');
 
 // Подключаем middleware авторизации
 const { authenticateToken } = require('./middleware/auth');
@@ -33,6 +34,7 @@ app.get('/api/health', (req, res) => {
 // Защищённые маршруты
 app.use('/api/students', authenticateToken, studentsRouter);
 app.use('/api/attendance', authenticateToken, attendanceRouter);
+app.use('/api/events', authenticateToken, eventsRouter);
 
 // Обработка несуществующих маршрутов
 app.use((req, res) => {

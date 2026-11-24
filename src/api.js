@@ -91,3 +91,30 @@ export const studentsApi = {
     });
   },
 };
+
+
+export const eventsApi = {
+  getAll() {
+    return request('/events');
+  },
+
+  create(event) {
+    return request('/events', {
+      method: 'POST',
+      body: JSON.stringify(event)
+    });
+  },
+
+  import(events) {
+    return request('/events/import', {
+      method: 'POST',
+      body: JSON.stringify({ events })
+    });
+  },
+
+  delete(id) {
+    return request(`/events/${id}`, {
+      method: 'DELETE'
+    });
+  }
+};
